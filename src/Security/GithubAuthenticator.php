@@ -3,6 +3,7 @@
 namespace App\Security;
 
 use App\Repository\UserRepository;
+use App\Security\Exception\NotVerifiedEmailException;
 use League\OAuth2\Client\Token\AccessToken;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,6 +13,7 @@ use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
 use League\OAuth2\Client\Provider\GithubResourceOwner;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use KnpU\OAuth2ClientBundle\Client\Provider\GithubClient;
+use Symfony\Component\Security\Http\Util\TargetPathTrait;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use KnpU\OAuth2ClientBundle\Security\Authenticator\SocialAuthenticator;
@@ -19,15 +21,18 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 
 class GithubAuthenticator extends SocialAuthenticator
 {
+  use TargetPathTrait;
+
   private RouterInterface $router;
   private ClientRegistry $clientRegistry;
   private UserRepository $userRepository;
 
-  public function __construct (RouterInterface $router, ClientRegistry $clientRegistry, UserRepository $userRepository) {
+  public function __construct(RouterInterface $router, ClientRegistry $clientRegistry, UserRepository $userRepository)
+  {
 
-      $this->router = $router;
-      $this->clientRegistry = $clientRegistry;
-      $this->userRepository = $userRepository;
+    $this->router = $router;
+    $this->clientRegistry = $clientRegistry;
+    $this->userRepository = $userRepository;
   }
 
   public function start(Request $request, AuthenticationException $authException = null)
@@ -55,7 +60,8 @@ class GithubAuthenticator extends SocialAuthenticator
    */
   public function getUser($credentials, UserProviderInterface $userProvider)
   {
-    dd($credentials);
+    /** @var GithubResourceOwner $githubUser */
+    $githubUser = $this->getClient()->fetchUserFromToken($credentials);
     /** @var GithubResourceOwner $githubUser */
     $githubUser = $this->getClient()->fetchUserFromToken($credentials);
 

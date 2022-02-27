@@ -5,6 +5,8 @@ namespace App\Repository;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use League\OAuth2\Client\Provider\GithubResourceOwner;
+use League\OAuth2\Client\Provider\ResourceOwnerInterface;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
@@ -34,6 +36,51 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $user->setPassword($newHashedPassword);
         $this->_em->persist($user);
         $this->_em->flush();
+    }
+
+    /**
+     * TODO: Create the Repository généric for different plateform connection
+     *
+     * @param GithubResourceOwner $owner
+     * @return void
+     */
+    public function findOrCreateFromOauth(ResourceOwnerInterface $owner)
+    {
+        // TODO: Create the Repository généric for different plateform connection
+    }
+
+    public function findOrCreateFromGithubOauth(GithubResourceOwner $owner): User
+    {
+        /** @var User|null $user */
+        $user = $this->createQueryBuilder('u')
+            ->where('u.githubId = :githubId')
+            ->orWhere('u.email = :email')
+            ->setParameters([
+                'email' => $owner->getEmail(),
+                'githubId' => $owner->getId(),
+            ])
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        if ($user) {
+            if ($user->getGithubId() === null) {
+                $user->setGithubId($owner->getId());
+                $this->getEntityManager()->flush();
+            }
+            return $user;
+        }
+
+
+        $user = (new User)
+            ->setRoles(['ROLE_USER'])
+            ->setGithubId($owner->getId())
+            ->setEmail($owner->getEmail());
+
+        $em = $this->getEntityManager();
+        $em->persist($user);
+        $em->flush();
+
+        return $user;
     }
 
     // /**
